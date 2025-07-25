@@ -8,6 +8,7 @@ from pathlib import Path
 
 import grpc
 import riva.client
+# Ensure these imports are correct based on your nvidia-riva-client version
 from riva.client.argparse_utils import add_asr_config_argparse_parameters, add_connection_argparse_parameters
 
 def parse_args() -> argparse.Namespace:
@@ -19,16 +20,19 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input-file", required=True, type=Path, help="A path to a local file to transcribe.")
     parser = add_connection_argparse_parameters(parser)
-    parser = add_asr_config_argparse_parameters(parser, max_alternatives=True, profanity_filter=True, word_time_offsets=True)
+    
+    # FIX 1: Add speaker_diarization=True to include diarization-related arguments
+    parser = add_asr_config_argparse_parameters(
+        parser, 
+        max_alternatives=True, 
+        profanity_filter=True, 
+        word_time_offsets=True,
+        speaker_diarization=True # <-- ADD THIS LINE
+    )
 
-    # --- NO MANUAL ADDITIONS FOR DIARIZATION ARGS HERE ---
-    # We determined that add_asr_config_argparse_parameters adds --speaker-diarization,
-    # and riva.client.add_speaker_diarization_to_config() in your version only takes 2 args.
-    # So, no need to add --diarization-max-speakers or --diarization-min-speakers to the parser.
-    # -----------------------------------------------------
-
-    # --- REMOVE OR COMMENT OUT THIS ENTIRE BLOCK ---
-    # This argument is already added by add_asr_config_argparse_parameters.
+    # FIX 2: REMOVE or COMMENT OUT this entire block that manually adds --custom-configuration
+    # This was causing the "conflicting option string" error because add_asr_config_argparse_parameters
+    # likely already adds it.
     # parser.add_argument(
     #     "--custom-configuration",
     #     action='append',
@@ -53,12 +57,19 @@ def main() -> None:
         verbatim_transcripts=not args.no_verbatim_transcripts,
         enable_word_time_offsets=args.word_time_offsets or args.speaker_diarization,
     )
+    # Ensure these arguments are available via parse_args if you use word boosting
     riva.client.add_word_boosting_to_config(config, args.boosted_lm_words, args.boosted_lm_score)
     
-    # --- NOW ONLY PASS 2 ARGUMENTS TO add_speaker_diarization_to_config ---
-    # This was the fix for "TypeError: add_speaker_diarization_to_config() takes 2 positional arguments but 3 were given"
-    riva.client.add_speaker_diarization_to_config(config, args.speaker_diarization)
+    # FIX 3: Pass all required arguments to add_speaker_diarization_to_config
+    # Based on the TypeError, your riva.client version expects 3 positional arguments here.
+    riva.client.add_speaker_diarization_to_config(
+        config, 
+        args.speaker_diarization, 
+        args.diarization_min_speakers, # <-- ADD THIS ARGUMENT
+        args.diarization_max_speakers  # <-- ADD THIS ARGUMENT
+    )
     
+    # Ensure these arguments are available via parse_args if you use endpoint parameters
     riva.client.add_endpoint_parameters_to_config(
         config,
         args.start_history,
@@ -69,22 +80,21 @@ def main() -> None:
         args.stop_threshold_eou
     )
     
-    # --- CRITICAL CHANGE HERE: REMOVE OR COMMENT OUT THIS LINE ---
-    # This is the line causing 'AttributeError: module 'riva.client' has no attribute 'add_custom_configuration_to_config''
+    # IMPORTANT: Keep this line commented out/removed unless your riva.client version
+    # truly provides 'add_custom_configuration_to_config'
     # riva.client.add_custom_configuration_to_config(
     #     config,
     #     args.custom_configuration
     # )
-    # You can keep the `custom-configuration` argument in `parse_args` if other parts of
-    # the script *conceptually* use it, but since the client utility isn't there,
-    # this specific function call must be removed.
     
     with args.input_file.open('rb') as fh:
         data = fh.read()
     try:
         riva.client.print_offline(response=asr_service.offline_recognize(data, config))
     except grpc.RpcError as e:
-        print(e.details())
+        print(f"Riva gRPC Error: {e.details()}")
+    except Exception as e:
+        print(f"An unexpected error occurred during Riva API call: {e}")
 
 
 if __name__ == "__main__":
