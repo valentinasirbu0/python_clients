@@ -21,18 +21,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-file", required=True, type=Path, help="A path to a local file to transcribe.")
     parser = add_connection_argparse_parameters(parser)
     
-    # FIX 1: Add speaker_diarization=True to include diarization-related arguments
+    # MODIFICATION 1: REMOVE speaker_diarization=True from here
+    # Your current riva.client version does not accept this keyword.
     parser = add_asr_config_argparse_parameters(
         parser, 
         max_alternatives=True, 
         profanity_filter=True, 
-        word_time_offsets=True,
-        speaker_diarization=True # <-- ADD THIS LINE
+        word_time_offsets=True
+        # REMOVED: speaker_diarization=True 
     )
 
-    # FIX 2: REMOVE or COMMENT OUT this entire block that manually adds --custom-configuration
-    # This was causing the "conflicting option string" error because add_asr_config_argparse_parameters
-    # likely already adds it.
+    # MODIFICATION 2: Manually add speaker diarization arguments to the parser.
+    # This ensures args.speaker_diarization, args.diarization_min_speakers,
+    # and args.diarization_max_speakers are available for the main function.
+    parser.add_argument(
+        "--speaker-diarization", action="store_true", help="Enable speaker diarization."
+    )
+    parser.add_argument(
+        "--diarization-min-speakers", type=int, default=1,
+        help="Minimum number of speakers to detect for diarization."
+    )
+    parser.add_argument(
+        "--diarization-max-speakers", type=int, default=1,
+        help="Maximum number of speakers to detect for diarization."
+    )
+
+    # The --custom-configuration block should remain removed or commented out as per previous fix.
     # parser.add_argument(
     #     "--custom-configuration",
     #     action='append',
@@ -55,18 +69,18 @@ def main() -> None:
         profanity_filter=args.profanity_filter,
         enable_automatic_punctuation=args.automatic_punctuation,
         verbatim_transcripts=not args.no_verbatim_transcripts,
-        enable_word_time_offsets=args.word_time_offsets or args.speaker_diarization,
+        # word_time_offsets is crucial for diarization, ensure it's True if diarization is enabled
+        enable_word_time_offsets=args.word_time_offsets or args.speaker_diarization, 
     )
     # Ensure these arguments are available via parse_args if you use word boosting
     riva.client.add_word_boosting_to_config(config, args.boosted_lm_words, args.boosted_lm_score)
     
-    # FIX 3: Pass all required arguments to add_speaker_diarization_to_config
-    # Based on the TypeError, your riva.client version expects 3 positional arguments here.
+    # This call remains as per our previous fix, now args will contain the needed values.
     riva.client.add_speaker_diarization_to_config(
         config, 
         args.speaker_diarization, 
-        args.diarization_min_speakers, # <-- ADD THIS ARGUMENT
-        args.diarization_max_speakers  # <-- ADD THIS ARGUMENT
+        args.diarization_min_speakers, 
+        args.diarization_max_speakers  
     )
     
     # Ensure these arguments are available via parse_args if you use endpoint parameters
