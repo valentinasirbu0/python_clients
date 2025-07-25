@@ -18,41 +18,15 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--input-file", required=True, type=Path, help="A path to a local file to transcribe.")
-    parser = add_connection_argparse_parameters(parser)
+    parser = add_connection.argparse_parameters(parser)
     
-    # This line remains unchanged from the previous 'final working code'.
-    # Your riva.client version does not accept 'speaker_diarization=True' here.
-    parser = add_asr_config_argparse_parameters(
+    # Add ASR configuration parameters, which should include diarization arguments
+    parser = add_asr_config.argparse_parameters(
         parser, 
         max_alternatives=True, 
         profanity_filter=True, 
         word_time_offsets=True 
     )
-
-    # MODIFICATION 1: REMOVE THIS ENTIRE BLOCK for --speaker-diarization.
-    # It is being implicitly added by add_asr_config_argparse_parameters.
-    # parser.add_argument(
-    #     "--speaker-diarization", action="store_true", help="Enable speaker diarization."
-    # )
-
-    # MODIFICATION 2: These two arguments should REMAIN.
-    # They are required by add_speaker_diarization_to_config and are NOT implicitly added.
-    parser.add_argument(
-        "--diarization-min-speakers", type=int, default=1,
-        help="Minimum number of speakers to detect for diarization."
-    )
-    parser.add_argument(
-        "--diarization-max-speakers", type=int, default=1,
-        help="Maximum number of speakers to detect for diarization."
-    )
-
-    # The --custom-configuration block should remain removed or commented out.
-    # parser.add_argument(
-    #     "--custom-configuration",
-    #     action='append',
-    #     nargs='*',
-    #     help="A key-value pair or pairs for custom configuration, e.g., --custom-configuration key=value."
-    # )
 
     args = parser.parse_args()
     args.input_file = args.input_file.expanduser()
