@@ -8,7 +8,6 @@ from pathlib import Path
 
 import grpc
 import riva.client
-# Ensure these imports are correct based on your nvidia-riva-client version
 from riva.client.argparse_utils import add_asr_config_argparse_parameters, add_connection_argparse_parameters
 
 def parse_args() -> argparse.Namespace:
@@ -21,22 +20,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-file", required=True, type=Path, help="A path to a local file to transcribe.")
     parser = add_connection_argparse_parameters(parser)
     
-    # MODIFICATION 1: REMOVE speaker_diarization=True from here
-    # Your current riva.client version does not accept this keyword.
+    # This line remains unchanged from the previous 'final working code'.
+    # Your riva.client version does not accept 'speaker_diarization=True' here.
     parser = add_asr_config_argparse_parameters(
         parser, 
         max_alternatives=True, 
         profanity_filter=True, 
-        word_time_offsets=True
-        # REMOVED: speaker_diarization=True 
+        word_time_offsets=True 
     )
 
-    # MODIFICATION 2: Manually add speaker diarization arguments to the parser.
-    # This ensures args.speaker_diarization, args.diarization_min_speakers,
-    # and args.diarization_max_speakers are available for the main function.
-    parser.add_argument(
-        "--speaker-diarization", action="store_true", help="Enable speaker diarization."
-    )
+    # MODIFICATION 1: REMOVE THIS ENTIRE BLOCK for --speaker-diarization.
+    # It is being implicitly added by add_asr_config_argparse_parameters.
+    # parser.add_argument(
+    #     "--speaker-diarization", action="store_true", help="Enable speaker diarization."
+    # )
+
+    # MODIFICATION 2: These two arguments should REMAIN.
+    # They are required by add_speaker_diarization_to_config and are NOT implicitly added.
     parser.add_argument(
         "--diarization-min-speakers", type=int, default=1,
         help="Minimum number of speakers to detect for diarization."
@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
         help="Maximum number of speakers to detect for diarization."
     )
 
-    # The --custom-configuration block should remain removed or commented out as per previous fix.
+    # The --custom-configuration block should remain removed or commented out.
     # parser.add_argument(
     #     "--custom-configuration",
     #     action='append',
@@ -69,13 +69,13 @@ def main() -> None:
         profanity_filter=args.profanity_filter,
         enable_automatic_punctuation=args.automatic_punctuation,
         verbatim_transcripts=not args.no_verbatim_transcripts,
-        # word_time_offsets is crucial for diarization, ensure it's True if diarization is enabled
         enable_word_time_offsets=args.word_time_offsets or args.speaker_diarization, 
     )
-    # Ensure these arguments are available via parse_args if you use word boosting
     riva.client.add_word_boosting_to_config(config, args.boosted_lm_words, args.boosted_lm_score)
     
-    # This call remains as per our previous fix, now args will contain the needed values.
+    # This call remains unchanged from the previous 'final working code'.
+    # args.speaker_diarization will now be implicitly available from add_asr_config_argparse_parameters,
+    # and min/max speakers from our manual additions.
     riva.client.add_speaker_diarization_to_config(
         config, 
         args.speaker_diarization, 
@@ -83,7 +83,6 @@ def main() -> None:
         args.diarization_max_speakers  
     )
     
-    # Ensure these arguments are available via parse_args if you use endpoint parameters
     riva.client.add_endpoint_parameters_to_config(
         config,
         args.start_history,
@@ -94,8 +93,7 @@ def main() -> None:
         args.stop_threshold_eou
     )
     
-    # IMPORTANT: Keep this line commented out/removed unless your riva.client version
-    # truly provides 'add_custom_configuration_to_config'
+    # The riva.client.add_custom_configuration_to_config call should remain commented out.
     # riva.client.add_custom_configuration_to_config(
     #     config,
     #     args.custom_configuration
