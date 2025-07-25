@@ -19,9 +19,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input-file", required=True, type=Path, help="A path to a local file to transcribe.")
     parser = add_connection_argparse_parameters(parser)
-    # This line already adds --language-code, --max-alternatives, --profanity-filter,
-    # --automatic-punctuation, --no-verbatim-transcripts, --word-time-offsets,
-    # AND --speaker-diarization.
     parser = add_asr_config_argparse_parameters(parser, max_alternatives=True, profanity_filter=True, word_time_offsets=True)
 
     # --- NO MANUAL ADDITIONS FOR DIARIZATION ARGS HERE ---
@@ -30,16 +27,14 @@ def parse_args() -> argparse.Namespace:
     # So, no need to add --diarization-max-speakers or --diarization-min-speakers to the parser.
     # -----------------------------------------------------
 
-    # Add custom configuration argument if your original script truly had it and you need it,
-    # but it's not being used by riva.client.add_custom_configuration_to_config below anymore.
-    # If the original script *didn't* have this, you can omit it.
-    # Given the AttributeError, it's safer to not add it if it doesn't match a client utility.
-    parser.add_argument(
-        "--custom-configuration",
-        action='append',
-        nargs='*',
-        help="A key-value pair or pairs for custom configuration, e.g., --custom-configuration key=value."
-    )
+    # --- REMOVE OR COMMENT OUT THIS ENTIRE BLOCK ---
+    # This argument is already added by add_asr_config_argparse_parameters.
+    # parser.add_argument(
+    #     "--custom-configuration",
+    #     action='append',
+    #     nargs='*',
+    #     help="A key-value pair or pairs for custom configuration, e.g., --custom-configuration key=value."
+    # )
 
     args = parser.parse_args()
     args.input_file = args.input_file.expanduser()
