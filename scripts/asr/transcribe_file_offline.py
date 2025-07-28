@@ -1,8 +1,3 @@
-# C:\Users\valentina.sirbu\OneDrive - AMDARIS GROUP LIMITED\Desktop\Test_Project2\Test_Project\python-clients\scripts\asr\transcribe_file_offline.py
-
-# SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: MIT
-
 import argparse
 from pathlib import Path
 
@@ -18,15 +13,8 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--input-file", required=True, type=Path, help="A path to a local file to transcribe.")
-    parser = add_connection.argparse_parameters(parser)
-    
-    # Add ASR configuration parameters, which should include diarization arguments
-    parser = add_asr_config.argparse_parameters(
-        parser, 
-        max_alternatives=True, 
-        profanity_filter=True, 
-        word_time_offsets=True 
-    )
+    parser = add_connection_argparse_parameters(parser)
+    parser = add_asr_config_argparse_parameters(parser, max_alternatives=True, profanity_filter=True, word_time_offsets=True)
 
     args = parser.parse_args()
     args.input_file = args.input_file.expanduser()
@@ -43,19 +31,13 @@ def main() -> None:
         profanity_filter=args.profanity_filter,
         enable_automatic_punctuation=args.automatic_punctuation,
         verbatim_transcripts=not args.no_verbatim_transcripts,
-        enable_word_time_offsets=args.word_time_offsets or args.speaker_diarization, 
+        enable_word_time_offsets=args.word_time_offsets or args.speaker_diarization,
     )
     riva.client.add_word_boosting_to_config(config, args.boosted_lm_words, args.boosted_lm_score)
     
-    # This call remains unchanged from the previous 'final working code'.
-    # args.speaker_diarization will now be implicitly available from add_asr_config_argparse_parameters,
-    # and min/max speakers from our manual additions.
-    riva.client.add_speaker_diarization_to_config(
-        config, 
-        args.speaker_diarization, 
-        args.diarization_min_speakers, 
-        args.diarization_max_speakers  
-    )
+    # --- NOW ONLY PASS 2 ARGUMENTS TO add_speaker_diarization_to_config ---
+    # This was the fix for "TypeError: add_speaker_diarization_to_config() takes 2 positional arguments but 3 were given"
+    riva.client.add_speaker_diarization_to_config(config, args.speaker_diarization)
     
     riva.client.add_endpoint_parameters_to_config(
         config,
@@ -67,20 +49,12 @@ def main() -> None:
         args.stop_threshold_eou
     )
     
-    # The riva.client.add_custom_configuration_to_config call should remain commented out.
-    # riva.client.add_custom_configuration_to_config(
-    #     config,
-    #     args.custom_configuration
-    # )
-    
     with args.input_file.open('rb') as fh:
         data = fh.read()
     try:
         riva.client.print_offline(response=asr_service.offline_recognize(data, config))
     except grpc.RpcError as e:
-        print(f"Riva gRPC Error: {e.details()}")
-    except Exception as e:
-        print(f"An unexpected error occurred during Riva API call: {e}")
+        print(e.details())
 
 
 if __name__ == "__main__":
