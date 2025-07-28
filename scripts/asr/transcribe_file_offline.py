@@ -35,9 +35,8 @@ def main() -> None:
     )
     riva.client.add_word_boosting_to_config(config, args.boosted_lm_words, args.boosted_lm_score)
     
-    # --- NOW ONLY PASS 2 ARGUMENTS TO add_speaker_diarization_to_config ---
-    # This was the fix for "TypeError: add_speaker_diarization_to_config() takes 2 positional arguments but 3 were given"
-    riva.client.add_speaker_diarization_to_config(config, args.speaker_diarization)
+    # FIX: Pass the 'diarization_max_speakers' argument
+    riva.client.add_speaker_diarization_to_config(config, args.speaker_diarization, args.diarization_max_speakers)
     
     riva.client.add_endpoint_parameters_to_config(
         config,
